@@ -43,6 +43,7 @@ enum LayerType {
 struct Image {
 	Image() {};
 	Image(int x, int y);
+	Image(int x, int y, vector<float>& vals);
 	int xDim, yDim;
 	vector<float> val;
 };
@@ -61,19 +62,19 @@ struct Layer {
 	Layer(LayerType l, int layerSize, ActivationFunction func, int neuLim);
 	Layer(LayerType l, int layerSize, ActivationFunction func, int Bits, int Tables);
 	Layer(LayerType l, int layerSize, ActivationFunction func, int Bits, int Tables, int neuLim);
-	//Used in creating the first convolutional layer wihtout max pooling. Filter x and y are the dimensions of the filters that convolve over the image\
+	//Used in creating convolutional layers that arent preceded by convolutional layers wihthout max pooling. Filter x and y are the dimensions of the filters that convolve over the image\
 	The activation function is self explanatory(eg RELU, TANH), the prev image lenght is the x dimension of the input image, the width is the y dimension\
 	If the previous image did not have zero padding and was from a convolutional layer, the dimensions are imagex - filterx + 1, repeat for y dimension\
 	The previous image depth means the number of color channels if we are taking an rgb/black&white image from the input layer or the number of filters if we are taking\
 	the image from a convolutional layer. Zero padding means maintain the image dimensions during convolution by padding the sides of the image with zero.
 	Layer(LayerType l, int filterx, int filtery, int numOfFilters, ActivationFunction func, int previmageLength, int previmageWidth, int prevImageDepthorNumOfFilters, bool zeroPad);
-	//Used in creating the first convolutional layer with max pooling. max pooling reduces data size. I usually go with a 2 x 2 filter with a 2 stride\
+	//Used in creating convolutional layers that arent preceded by convolutional layers with max pooling. max pooling reduces data size. It uses n x n filters. I usually go with a 2 x 2 filter with a 2 stride\
 	To know what the other variables do check the other convolutional layer initiator-
-	Layer(LayerType l, int filterx, int filtery, int numOfFilters, ActivationFunction func, int previmageLength, int previmageWidth, int prevImageDepthorNumOfFilters, bool zeroPad, int maxPoolFilterX, int maxPoolFilterY, int maxPoolstride);
-	//DO NOT USE UNLESS THIS LAYER COMES AFTER A CONVOLUTIONAL LAYER. Used in creating subsequent convolutional layers without max pooling. All the work of calculating image size will be done in code
-	Layer(LayerType l, int filterx, int filtery, ActivationFunction func, bool zeroPad);
-	///DO NOT USE UNLESS THIS LAYER COMES AFTER A CONVOLUTIONAL LAYER. Used in creating subsequent convolutional layers with max pooling. All the work of calculating image size will be done in code
-	Layer(LayerType l, int filterx, int filtery, ActivationFunction func, bool zeroPad, int maxPoolx, int maxPooly, int maxPoolstride);
+	Layer(LayerType l, int filterx, int filtery, int numOfFilters, ActivationFunction func, int previmageLength, int previmageWidth, int prevImageDepthorNumOfFilters, bool zeroPad, int maxPoolFilterXYStride);
+	//Used in creating convolutional layers that are preceded by convolutional layers without max pooling. DO NOT USE UNLESS THIS LAYER COMES AFTER A CONVOLUTIONAL LAYER. All the work of calculating image size will be done in code
+	Layer(LayerType l, int filterx, int filtery, int numOfFilters, ActivationFunction func, bool zeroPad, Layer* prevLayer);
+	//Used in creating convolutional layers that are preceded by convolutional layers with max pooling. DO NOT USE UNLESS THIS LAYER COMES AFTER A CONVOLUTIONAL LAYER. All the work of calculating image size will be done in code
+	Layer(LayerType l, int filterx, int filtery, int numOfFilters, ActivationFunction func, bool zeroPad, int maxPoolxyStride, Layer* prevLayer);
 
 	//public vars
 	int neuronLimit = 99999;
@@ -82,6 +83,18 @@ struct Layer {
 	vector<Neuron> neuron;
 	vector<float> inputAt(int pipe);
 	vector<unsigned> intInputAt(int pipe);
+
+	//Convolution Vars: When max pooling, the x, y and stride of the filter are the same number and < the img x and y, eg a 3 x 3 filter with stride 3. I do this cuz its easy for me to understand
+	vector<Image> filters;
+	int prevImgLen = 0, prevImgWid = 0, prevImgDepth = 0, maxPoolx = -1, maxPooly = -1, maxPoolStride = -1;
+	//Stores the image length and width before max pooling
+	int imgLen = 0, imgWid = 0;
+	bool zeroPad = false;
+	//To store the pre max pooling biases of a convolutional layer. Randomized btw -1 and 1 at the beginning
+	vector<float> convoBias;
+	//To store the indexes of the neurons with the max values for each image during max pooling. Used in backprop
+	vector<vector<vector<int>>> maxNeuronIndex;
+
 
 private:
 	static float TanhActivate(float x);
@@ -103,5 +116,18 @@ private:
 
 class Util {
 public:
+	static void rotate180(Image& image);
+	static void Randomize(vector<float>& arr);
+	static void transpose(Image& image);
+	static void reverseColumns(Image& image);
 	static vector<float> Convolve(Image& image, Image& filter);
+	static Layer Dense(int layerSize, ActivationFunction func);
+	static Layer Dense(int layerSize, ActivationFunction func, int neuLim);
+	static Layer Dense(int layerSize, ActivationFunction func, int Bits, int Tables);
+	static Layer Dense(int layerSize, ActivationFunction func, int Bits, int Tables, int neuLim);
+	static vector<float> MaxPool(Image& image, int filterxDim, int filteryDim, int filterstride, vector<int>& maxIndexes);
+	static Layer Convo(int filterx, int filtery, int numOfFilters, ActivationFunction func, bool zeroPad, Layer* prevLayer);
+	static Layer Convo(int filterx, int filtery, int numOfFilters, ActivationFunction func, bool zeroPad, int maxPoolxyStride, Layer* prevLayer);
+	static Layer Convo(int filterx, int filtery, int numOfFilters, ActivationFunction func, int previmageLength, int previmageWidth, int prevImageDepthorNumOfFilters, bool zeroPad);
+	static Layer Convo(int filterx, int filtery, int numOfFilters, ActivationFunction func, int previmageLength, int previmageWidth, int prevImageDepthorNumOfFilters, bool zeroPad, int maxPoolFilterXYStride);
 };

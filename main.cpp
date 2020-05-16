@@ -8,23 +8,12 @@ using namespace std;
 //Also note: there is no bucket limiting during hashing
 //Also also 
 
-//TODO: implement multithreading, implement convolutional layers
-
-//Convolutoinal Layers:
-//Hash based implementation is out the window since every few neurons have the same weights(the filter)
-//I need to know the dimensions of the image in the previous layer for convolution to happen
+//TODO: implement multithreading
 
 //Potential problems
 //Q: What happens if no output neuron is chosen? The weights can't update (cuz they only update along chosen neurons) 
 //so what happens to the network???
 //A: Minimize this chance by reducing the number of bits and increasing the number of tables
-//Q: What if I set a variable to one thing in one thread and to another thing in another thread?
-//A: this should not matter (at least to my 'active' vector in each neuron) as when all the threads are combined, 
-//backprop has already been done (and the 'active' vector is no longer needed).
-//Q: In the back pass, do you calculate the cost for all output neurons or only the active ones?
-//A: I could be wrong but i dont think in a given instance Im not supposed to touch non active nodes, so Only active ones
-//Q: Why does the limit of my weight value (as in how high or low it can go) change with the number of tables I have???
-//A: It doesnt, it changes with the number of neurons I have
 
 //WHAT DID I DO?! In case the program stops working:->
 //It works.... For now.
