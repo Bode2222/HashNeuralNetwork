@@ -3,6 +3,7 @@
 Image::Image(int x, int y) {
 	xDim = x; yDim = y;
 	val = vector<float>(x * y);
+	gradients = vector<float>(x * y);
 	for (int i = 0; i < x * y; i++) {
 		val[i] = (rand() % 10000) / 5000.f - 1.f;
 	}
@@ -11,15 +12,7 @@ Image::Image(int x, int y) {
 Image::Image(int x, int y, vector<float>& vals) {
 	xDim = x; yDim = y;
 	val = vals;
-}
-
-Neuron::Neuron(unsigned batchSize) {
-	SetVars(batchSize);
-}
-
-Neuron::Neuron(unsigned batchSize, vector<float> w) {
-	SetVars(batchSize);
-	weight = w;
+	gradients = vector<float>(x * y);
 }
 
 Neuron::Neuron(vector<float> w) {
@@ -48,6 +41,11 @@ void Neuron::SetVars(int batchSize) {
 	active = vector<unsigned>(batchSize / (sizeof(int) * 8) + 1);
 	gradient = vector<float>(batchSize);
 	activation = vector<float>(batchSize);
+
+	//If weights have been set/If it's not a bias neuron
+	if (weight.size() != 0) {
+		weightGradient = vector<vector<float>>(weight.size(), vector<float>(batchSize));
+	}
 }
 
 void Neuron::pushActive(bool num) {

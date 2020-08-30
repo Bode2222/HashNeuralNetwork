@@ -1,71 +1,50 @@
-#include <iostream>
 #include <chrono>
 #include "NeuralNet.h"
 using namespace std;
 
-//Note: There's no way Im going to remember this so I'll say it here. A pipe is a thread that executes the feedforward and backprop
-//function during training.
-//Also note: there is no bucket limiting during hashing
-//Also also 
+//Note: 
+//There's no way Im going to remember this so I'll say it here. A pipe is a thread that executes the feedforward and backprop functions during training.
+//There is no bucket limiting during hashing. Its possible all neurons pack into one bucket and reduce performance.
 
-//TODO: implement multithreading
-
-//Potential problems
-//Q: What happens if no output neuron is chosen? The weights can't update (cuz they only update along chosen neurons) 
-//so what happens to the network???
-//A: Minimize this chance by reducing the number of bits and increasing the number of tables
+//TODO: Multithreading
+//Multithread the feed forward and backpropagate functions
+//FFBP will take a vector input, vector output and pipe number, FFBPWOO will take vector input, vector output, pipe number and output value
+//Multithread the outputs of different filters in convolutional layers then add them together
+//Edit next layer dense to make sure it works with my hashNN setup
+//increase speed of processing
+//Switch to minibatch GD(gradient descent) for dense and convolutional layers
 
 //WHAT DID I DO?! In case the program stops working:->
-//It works.... For now.
+//in the feed forward function in NeuralNet.cpp, I am trying to join my threads. if i join them in the same loop that theyre created in, it works fine, if I
+//Try to join them in a seperate loop however...
 
 int main() {
-	srand(0);//time(0)
-
 	//Neural Network architecture
 	vector<Layer> layout;
 	layout.push_back(Layer(DENSE, 02, NONE, 0, 1, 2));
 	layout.push_back(Layer(DENSE, 02, TANH, 0, 1, 2));
-	layout.push_back(Layer(DENSE, 02, SOFTMAX, 0, 1, 2));
+	layout.push_back(Layer(DENSE, 01, NONE, 0, 1, 2));
 	NeuralNet myNet(layout);
 
 	//Training Data
 	vector<vector<float>> inputBatch = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
-	vector<vector<float>> outputBatch = { {1, 0}, {0, 1}, {0, 1}, {1, 0} };
+	vector<vector<float>> outputBatch = { {1}, {0}, {0}, {1} };
 	int chosenInputIndex = 1;
 
 	if (!myNet.load("OrGate.hnn")) {
 		cout << "Training network" << endl;
 		//train network
-		for (int i = 0; i < 10000; i++) {
-			myNet.train(inputBatch, outputBatch);
-		}
+		chrono::system_clock::time_point startTime = chrono::system_clock::now();
+		myNet.trainTillError(inputBatch, outputBatch, 1, 3000, 0.0001);
+		chrono::system_clock::time_point endTime = chrono::system_clock::now();
+		std::chrono::duration<double, std::milli> timeTaken = endTime - startTime;
+		cout << "Time taken: " << timeTaken.count() << endl;
 		//myNet.save("OrGate.hnn");
 	}
 	else {
 		cout << "Loading Network" << endl;
 		myNet.save("OrGate.hnn");
 	}
-
-	//Convolution Unit Test
-	vector<float> filter1 = { 0.5, 0.25, 0.75, 1 };
-	vector<float> image1 = { 1, 3, 9, 2, 6, 4, 8, 7, 4.5, 7.5, 6, 9 };
-
-	Image filter;
-	filter.val = filter1;
-	filter.xDim = 2;
-	filter.yDim = 2;
-
-	Image image;
-	image.val = image1;
-	image.xDim = 3;
-	image.yDim = 4;
-
-	vector<float> result = Util::Convolve(image, filter);
-
-	for (int i = 0; i < result.size(); i++) {
-		cout << result[i] << " ";
-	}
-	cout << endl;
 
 	/*Test Net with input*/
 	cout << "Error: " << myNet.getError() << endl;

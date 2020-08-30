@@ -34,7 +34,7 @@ float NeuralNet::CostDerivative(float myOutput, float target) {
 }
 
 float NeuralNet::getError() {
-	return totalError;
+	return loss;
 }
 
 void NeuralNet::startNetwork(vector<Layer>& layout) {
@@ -122,19 +122,19 @@ void NeuralNet::BackPropagate(const vector<float>& output, int pipe) {
 
 	int outLayIndex = net.size() - 1;
 	//Put output gradient into output layer. Only calculate cost of active neurons
-	totalError = 0;
+	loss = 0;
 	for (unsigned i = 0; i < output.size(); i++) {
 		if (net[outLayIndex].neuron[i].getActive(pipe)) {
 			net[outLayIndex].neuron[i].gradient[pipe] = CostDerivative(net[outLayIndex].neuron[i].activation[pipe], output[i]);
-			totalError += Cost(net[outLayIndex].neuron[i].activation[pipe], output[i]);
+			loss += Cost(net[outLayIndex].neuron[i].activation[pipe], output[i]);
 		}
 	}
 
 	//For every layer except the input. update weights and neurons
-	if (totalError > 0) {
+	if (loss > 0) {
 		for (int i = outLayIndex; i > 0; i--) {
-			if (net[i].getLayerType() == DENSE) DenseSGDBackPass(i, pipe);
-			if (net[i].getLayerType() == CONVO) ConvSGDBackPass(i, pipe);
+			if (net[i].getLayerType() == DENSE) DenseBackwardPass(i, pipe);
+			if (net[i].getLayerType() == CONVO) ConvBackwardPass(i, pipe);
 		}
 	}
 
@@ -204,53 +204,40 @@ void NeuralNet::DenseForwardPass(int layerIndex, int pipe) {
 	}
 }
 
-void NeuralNet::DenseSGDBackPass(int layerIndex, int pipe) {
-	//Calculate the gradients for the weights and biases
+void NeuralNet::DenseBackwardPass(int layerIndex, int pipe) {
+	//Update Gradient of neurons in current layer
+	if (layerIndex != net.size() - 1) {
+		vector<float> gradientAtThisPipe;
+		if (net[layerIndex + 1].getLayerType() != CONVO) {
+			gradientAtThisPipe = GetGradientIfNextLayerDense(layerIndex, pipe);
+		}
+		else {
+			gradientAtThisPipe = GetGradientIfNextLayerConvo(layerIndex, pipe);
+		}
+
+		if (gradientAtThisPipe.size() != net[layerIndex].neuron.size()) {
+			cout << "Gradient dimensions not equal to layer dimensions. check convsgdbackpass funciton. Layer " << layerIndex << endl;
+			cout << "Gradient At this pipe: " << gradientAtThisPipe.size() << endl;
+			cout << "Actual layer size: " << net[layerIndex].neuron.size() << endl;
+			return;
+		}
+		for (int i = 0; i < gradientAtThisPipe.size(); i++) {
+			net[layerIndex].neuron[i].gradient[pipe] = gradientAtThisPipe[i];
+		}
+	}
+
+	//Update the weights leading into that neuron
 	for (int i = 0; i < net[layerIndex].size(); i++) {
-		//if the neuron is active
-		if (net[layerIndex].neuron[i].getActive(pipe)) {
-			//Update the neuron
-			if (layerIndex != net.size() - 1 && net[layerIndex + 1].getLayerType() == DENSE) {
-				for (int j = 0; j < net[layerIndex + 1].size(); j++) {
-					//if the weight is going to an active neuron and that neuron is not the bias
-					if (layerIndex + 1 == net[layerIndex].size() - 1 || j != net[layerIndex + 1].size() - 1) {
-						if (net[layerIndex + 1].neuron[j].getActive(pipe)) {
-							Neuron* nextNeuron = &net[layerIndex + 1].neuron[j];
-							Layer* nextLayer = &net[layerIndex + 1];
-							net[layerIndex].neuron[i].gradient[pipe] += nextNeuron->weight[i] * nextLayer->dActivate(nextNeuron->activation[pipe]) * nextNeuron->gradient[pipe];
-						}
-					}
-				}
-			}
-			else if (layerIndex != net.size() - 1 && net[layerIndex + 1].getLayerType() == CONVO) {
-				vector<float> gradientAtThisPipe;
-				gradientAtThisPipe = NextLayerConvo(layerIndex, pipe);
-				//Put the gradients in place
-				if (gradientAtThisPipe.size() != net[layerIndex].neuron.size()) {
-					cout << "Gradient dimensions not equal to layer dimensions. check convsgdbackpass funciton. Layer " << layerIndex << endl;
-					cout << "Gradient At this pipe: " << gradientAtThisPipe.size() << endl;
-					cout << "Actual layer size: " << net[layerIndex].neuron.size() << endl;
-					return;
-				}
-				for (int i = 0; i < gradientAtThisPipe.size(); i++) {
-					net[layerIndex].neuron[i].gradient[pipe] = gradientAtThisPipe[i];
-				}
-			}
+		//If the neuron is active and (the neuron is in the last layer or the neuron is not the last neuron in the layer(ie the bias))
+		if (net[layerIndex].neuron[i].getActive(pipe) && !(layerIndex != net.size() - 1 && i == net[layerIndex].size() - 1)) {
+			for (int j = 0; j < net[layerIndex - 1].size(); j++) {
+				//if the weight is coming from an active neuron
+				if (net[layerIndex - 1].neuron[j].getActive(pipe)) {
+					Neuron* prevNeuron = &net[layerIndex - 1].neuron[j];
+					Neuron* curNeuron = &net[layerIndex].neuron[i];
+					//weight update is divided by batch size and diminished by growthRate
+					net[layerIndex].neuron[i].weightGradient[j][pipe] += prevNeuron->activation[pipe] * net[layerIndex].dActivate(curNeuron->activation[pipe]) * curNeuron->gradient[pipe];
 
-
-
-			//Update the weights leading into that neuron
-			if (!(layerIndex != net.size() - 1 && i == net[layerIndex].size() - 1)) {
-				for (int j = 0; j < net[layerIndex - 1].size(); j++) {
-					//if the weight is coming from an active neuron
-					if (net[layerIndex - 1].neuron[j].getActive(pipe)) {
-						Neuron* prevNeuron = &net[layerIndex - 1].neuron[j];
-						Neuron* curNeuron = &net[layerIndex].neuron[i];
-						//weight update is divided by batch size and diminished by growthRate
-						//if (layerIndex == 3) cout << curNeuron->gradient[pipe] << " ";
-						net[layerIndex].neuron[i].weight[j] -= prevNeuron->activation[pipe] * net[layerIndex].dActivate(curNeuron->activation[pipe]) * curNeuron->gradient[pipe] / curNeuron->activation.size() * growthRate;
-
-					}
 				}
 			}
 		}
@@ -360,26 +347,28 @@ void NeuralNet::ConvForwardPass(int layerIndex, int pipe) {
 	}
 }
 
-void NeuralNet::ConvSGDBackPass(int layerIndex, int pipe) {
+void NeuralNet::ConvBackwardPass(int layerIndex, int pipe) {
 	//Update Inputs
 	//If the next layer isnt a conv layer, this layer neurons update using dense back pass
-	vector<float> gradientAtThisPipe;
-	if (net[layerIndex + 1].getLayerType() != CONVO) {
-		gradientAtThisPipe = NextLayerDense(layerIndex, pipe);
-	}
-	//If the next layer is a conv layer, use filter of next layer and dActivation of next layer to calc this layer input gradient
-	else {
-		gradientAtThisPipe = NextLayerConvo(layerIndex, pipe);
-	}
+	if (layerIndex != net.size() - 1) {
+		vector<float> gradientAtThisPipe;
+		if (net[layerIndex + 1].getLayerType() != CONVO) {
+			gradientAtThisPipe = GetGradientIfNextLayerDense(layerIndex, pipe);
+		}
+		//If the next layer is a conv layer, use filter of next layer and dActivation of next layer to calc this layer input gradient
+		else {
+			gradientAtThisPipe = GetGradientIfNextLayerConvo(layerIndex, pipe);
+		}
 
-	if (gradientAtThisPipe.size() != net[layerIndex].neuron.size()) {
-		cout << "Gradient dimensions not equal to layer dimensions. check convsgdbackpass funciton. Layer " << layerIndex << endl;
-		cout << "Gradient At this pipe: " << gradientAtThisPipe.size() << endl;
-		cout << "Actual layer size: " << net[layerIndex].neuron.size() << endl;
-		return;
-	}
-	for (int i = 0; i < gradientAtThisPipe.size(); i++) {
-		net[layerIndex].neuron[i].gradient[pipe] = gradientAtThisPipe[i];
+		if (gradientAtThisPipe.size() != net[layerIndex].neuron.size()) {
+			cout << "Gradient dimensions not equal to layer dimensions. check convsgdbackpass funciton. Layer " << layerIndex << endl;
+			cout << "Gradient At this pipe: " << gradientAtThisPipe.size() << endl;
+			cout << "Actual layer size: " << net[layerIndex].neuron.size() << endl;
+			return;
+		}
+		for (int i = 0; i < gradientAtThisPipe.size(); i++) {
+			net[layerIndex].neuron[i].gradient[pipe] = gradientAtThisPipe[i];
+		}
 	}
 
 
@@ -399,7 +388,7 @@ void NeuralNet::ConvSGDBackPass(int layerIndex, int pipe) {
 	vector<vector<float>> layerOutput(net[layerIndex].filters.size(), vector<float>(net[layerIndex].size() / net[layerIndex].filters.size()));
 	for (int i = 0; i < net[layerIndex].filters.size(); i++) {
 		for (int j = 0; j < ((net[layerIndex].size() - 1) / net[layerIndex].filters.size()); j++) {
-			layerOutput[i][j] = gradientAtThisPipe[i * ((net[layerIndex].size() - 1) / net[layerIndex].filters.size()) + j] * net[layerIndex].dActivate(net[layerIndex].neuron[i * ((net[layerIndex].size() - 1) / net[layerIndex].filters.size()) + j].activation[pipe]);
+			layerOutput[i][j] = net[layerIndex].neuron[i * ((net[layerIndex].size() - 1) / net[layerIndex].filters.size()) + j].gradient[pipe] * net[layerIndex].dActivate(net[layerIndex].neuron[i * ((net[layerIndex].size() - 1) / net[layerIndex].filters.size()) + j].activation[pipe]);
 		}
 	}
 
@@ -497,25 +486,29 @@ void NeuralNet::ConvSGDBackPass(int layerIndex, int pipe) {
 	}
 }
 
-vector<float> NeuralNet::NextLayerDense(int layerIndex, int pipe) {
+//Under the assumption that we have already checked to ensure that this isnt the last layer and the next layer is dense
+vector<float> NeuralNet::GetGradientIfNextLayerDense(int layerIndex, int pipe) {
 	//Every neuron change is the sum of (the weight to the next neuron) * (the dActiavation of that neuron) * (Its gradient) for every neuron in the next layer except bias
 	Layer nextLayer = net[layerIndex + 1];
 	int thisLayerSize = nextLayer.neuron[0].weight.size();
 	vector<float> result(thisLayerSize);
+
 	//For every neuron in this layer except the bias
 	for (int i = 0; i < thisLayerSize - 1; i++) {
-		//For every neuron in the next layer
-		for (int j = 0; j < nextLayer.size(); j++) {
-			//If this neuron has the same number of weights as the previous layer has neurons(ie, all neurons except bias)
-			if (nextLayer.neuron[j].weight.size() == thisLayerSize) {
-				result[i] += nextLayer.neuron[j].weight[i] * nextLayer.dActivate(nextLayer.neuron[j].activation[pipe]) * nextLayer.neuron[j].gradient[pipe];
+		if (net[layerIndex].neuron[i].getActive(pipe)) {
+			//For every neuron in the next layer
+			for (int j = 0; j < nextLayer.size(); j++) {
+				//If this neuron has the same number of weights as the previous layer has neurons(ie, all neurons except bias have weights equal to the size of the prev layer)
+				if (nextLayer.neuron[j].getActive(pipe) && nextLayer.neuron[j].weight.size() == thisLayerSize) {
+					result[i] += nextLayer.neuron[j].weight[i] * nextLayer.dActivate(nextLayer.neuron[j].activation[pipe]) * nextLayer.neuron[j].gradient[pipe];
+				}
 			}
 		}
 	}
 	return result;
 }
 
-vector<float> NeuralNet::NextLayerConvo(int layerIndex, int pipe) {
+vector<float> NeuralNet::GetGradientIfNextLayerConvo(int layerIndex, int pipe) {
 	Layer nextLayer = net[layerIndex + 1];
 	//Get this layer post pool image dimensions. Work this out
 	int depth = nextLayer.filters.size();
@@ -663,12 +656,18 @@ void NeuralNet::train(const vector<vector<float>>& input, const vector<vector<fl
 		}
 	}
 
+	float batchLoss = 0;
+	clearWeightGradients();
 	HashUpdateTracker();
 	for (int i = 0; i < input.size(); i++) {
 		//Multithread this
 		feedForward(input[i], i);
 		BackPropagate(output[i], i);
+		batchLoss += loss;
 	}
+	applyWeightGradients();
+	if (debug)
+		cout << "Batch Error: " << batchLoss / input.size() << endl;
 }
 
 void NeuralNet::trainWithOneOutput(const vector<vector<float>>& input, const vector<OneOutput>& out) {
@@ -685,6 +684,7 @@ void NeuralNet::trainWithOneOutput(const vector<vector<float>>& input, const vec
 		}
 	}
 
+	clearWeightGradients();
 	HashUpdateTracker();
 	for (int i = 0; i < input.size(); i++) {
 		//Multithread this
@@ -692,6 +692,41 @@ void NeuralNet::trainWithOneOutput(const vector<vector<float>>& input, const vec
 		vector<float> output = getOutput(i);
 		output[out[i].index] = out[i].val;
 		BackPropagate(output, i);
+	}
+	applyWeightGradients();
+}
+
+void NeuralNet::trainTillError(const vector<vector<float>>& input, const vector<vector<float>>& output, int numOfBatches, int numOfEpochs, float targetError) {
+	int batchSize = input.size() / numOfBatches;
+	//Check if input and output batches are the same size
+	if (input.size() != output.size()) {
+		cout << "Error: Input size does not match output size. TrainTillError function" << endl;
+		return;
+	}
+
+	//Set batch size
+	for (int i = 0; i < net.size(); i++) {
+		net[i].maxNeuronIndex = vector<vector<vector<int>>>(batchSize, vector<vector<int>>(net[i].filters.size(), vector<int>()));
+		for (int j = 0; j < net[i].size(); j++) {
+			net[i].neuron[j].SetVars(batchSize);
+		}
+	}
+	
+	for (int i = 0; i < numOfEpochs; i++) {
+		for (int j = 0; j < numOfBatches; j++) {
+			float batchLoss = 0.f;
+			clearWeightGradients();
+			HashUpdateTracker();
+			for (int k = 0; k < batchSize; k++) {
+				//Multithread this
+				feedForward(input[j * batchSize + k], k);
+				BackPropagate(output[j * batchSize + k], k);
+				batchLoss += loss;
+			}
+			applyWeightGradients();
+			if (debug) cout << "Batch Error: " << batchLoss/batchSize << endl;
+			if (batchLoss / batchSize < targetError) return;
+		}
 	}
 }
 
@@ -948,4 +983,36 @@ int NeuralNet::getConvLayerFilterSize(int layerIndex) {
 
 int NeuralNet::getLayerSize(int layerIndex) {
 	return net[layerIndex].size();
+}
+
+void NeuralNet::clearWeightGradients() {
+	for (int i = 1; i < net.size(); i++) {
+		for (int j = 0; j < net[i].size(); j++) {
+			//If the weights connecting to this neuron is the same number as the number of neurons in the previous layer(ie, not the bias neuron)
+			if (net[i].neuron[j].weight.size() == net[i - 1].size()) {
+				for (int k = 0; k < net[i].neuron[j].weight.size(); k++) {
+					for (int l = 0; l < net[i].neuron[j].activation.size(); l++) {
+						net[i].neuron[j].weightGradient[k][l] = 0;
+					}
+				}
+			}
+		}
+	}
+}
+
+void NeuralNet::applyWeightGradients() {
+	for (int i = 1; i < net.size(); i++) {
+		for (int j = 0; j < net[i].size(); j++) {
+			//If the weights connecting to this neuron is the same number as the number of neurons in the previous layer(ie, not the bias neuron)
+			if (net[i].neuron[j].weight.size() == net[i - 1].size()) {
+				for (int k = 0; k < net[i].neuron[j].weight.size(); k++) {
+					float totalGradient = 0;
+					for (int l = 0; l < net[i].neuron[j].activation.size(); l++) {
+						totalGradient += net[i].neuron[j].weightGradient[k][l];
+					}
+					net[i].neuron[j].weight[k] -= totalGradient * growthRate;
+				}
+			}
+		}
+	}
 }

@@ -6,13 +6,12 @@ using namespace std;
 
 struct Neuron {
 	Neuron() {};
-	Neuron(unsigned batchSize);
-	Neuron(unsigned batchsize, vector<float> weight);
 	Neuron(vector<float> weight);
 
 	vector<float> weight;
 	vector<float> gradient;
 	vector<float> activation;
+	vector<vector<float>> weightGradient;
 
 	//Add true or false to the end of the active vector
 	void pushActive(bool);
@@ -46,6 +45,7 @@ struct Image {
 	Image(int x, int y, vector<float>& vals);
 	int xDim, yDim;
 	vector<float> val;
+	vector<float> gradients;
 };
 
 struct Layer {
