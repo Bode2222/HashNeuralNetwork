@@ -33,7 +33,7 @@ class NeuralNet : public NeuralNetwork
 	int nextUpdate = baseT;
 	float loss;
 
-	bool debug = false;
+	bool DEBUG = false;
 
 	vector<Layer> net;
 	//Default cost function
@@ -83,7 +83,7 @@ class NeuralNet : public NeuralNetwork
 	void LoadCurrNetVersion(ifstream);
 
 public:
-	void setDebugFlag(bool dbug);
+	void setDebugFlag(bool dbug) { DEBUG = dbug; };
 	float getError();
 	NeuralNet() {};
 	void save(string);
@@ -106,4 +106,3 @@ public:
 	void trainTillError(const vector<vector<float>>& input, const vector<vector<float>>& output, int numOfBatches, int numOfEpochs, float targetError);
 	void trainWithOneOutput(const vector<vector<float>>& inputs, const vector<OneOutput>& outputs);
 };
-

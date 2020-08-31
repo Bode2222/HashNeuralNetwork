@@ -92,6 +92,7 @@ struct Layer {
 	bool zeroPad = false;
 	//To store the pre max pooling biases of a convolutional layer. Randomized btw -1 and 1 at the beginning
 	vector<float> convoBias;
+	vector<float> convoBiasGradient;
 	//To store the indexes of the neurons with the max values for each image during max pooling. Used in backprop
 	vector<vector<vector<int>>> maxNeuronIndex;
 
@@ -107,6 +108,8 @@ private:
 	static float ReluDActivate(float x);
 	static float SoftmaxDActivate(float x);
 	static float NoneDActivate(float x) { return 1; }
+
+	void calculateMySize();
 
 	//Layer vars
 	ActivationFunction actFunc;

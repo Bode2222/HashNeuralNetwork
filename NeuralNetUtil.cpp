@@ -12,7 +12,7 @@ Image::Image(int x, int y) {
 Image::Image(int x, int y, vector<float>& vals) {
 	xDim = x; yDim = y;
 	val = vals;
-	gradients = vector<float>(x * y);
+	gradients = vector<float>(val.size());
 }
 
 Neuron::Neuron(vector<float> w) {
@@ -109,6 +109,21 @@ Layer::Layer(LayerType l, int layerSize, ActivationFunction func, int Bits, int 
 	neuronLimit = neuLim;
 }
 
+void Layer::calculateMySize() {
+	convoBias = vector<float>(imgLen * imgWid * filters.size());
+	convoBiasGradient = vector<float>(convoBias.size());
+	if (maxPoolStride != -1) {
+		float tempX = 1.f * imgLen / maxPoolStride;
+		float tempY = 1.f * imgWid / maxPoolStride;
+		int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
+		int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
+		mySize = dimX * dimY * filters.size();
+	}
+	else {
+		mySize = imgLen * imgWid * filters.size();
+	}
+}
+
 Layer::Layer(LayerType l, int filterx, int filtery, int numOfFilters, ActivationFunction func, int previmageLength, int previmageWidth, int prevImageDepthorNumOfFilters, bool zPad) {
 	layType = l;
 
@@ -125,32 +140,12 @@ Layer::Layer(LayerType l, int filterx, int filtery, int numOfFilters, Activation
 	if (zeroPad) {
 		imgLen = prevImgLen;
 		imgWid = prevImgLen;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	else {
 		imgLen = prevImgLen - filters[0].xDim + 1;
 		imgWid = prevImgLen - filters[0].yDim + 1;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	/*********************/
 	//Bias
@@ -179,32 +174,12 @@ Layer::Layer(LayerType l, int filterx, int filtery, int numOfFilters, Activation
 	if (zeroPad) {
 		imgLen = prevImgLen;
 		imgWid = prevImgLen;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	else {
 		imgLen = prevImgLen - filters[0].xDim + 1;
 		imgWid = prevImgLen - filters[0].yDim + 1;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	/*********************/
 	//Bias
@@ -276,32 +251,12 @@ Layer::Layer(LayerType l, int filterx, int filtery, int numOfFilters, Activation
 	if (zeroPad) {
 		imgLen = prevImgLen;
 		imgWid = prevImgLen;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	else {
 		imgLen = prevImgLen - filters[0].xDim + 1;
 		imgWid = prevImgLen - filters[0].yDim + 1;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	/*********************/
 	//Bias
@@ -377,32 +332,12 @@ Layer::Layer(LayerType l, int filterx, int filtery, int numOfFilters, Activation
 	if (zeroPad) {
 		imgLen = prevImgLen;
 		imgWid = prevImgLen;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	else {
 		imgLen = prevImgLen - filters[0].xDim + 1;
 		imgWid = prevImgLen - filters[0].yDim + 1;
-		convoBias = vector<float>(imgLen * imgWid * filters.size());
-		if (maxPoolStride != -1) {
-			float tempX = 1.f * imgLen / maxPoolStride;
-			float tempY = 1.f * imgWid / maxPoolStride;
-			int dimX = (tempX > (int)tempX) ? tempX + 1 : tempX;
-			int dimY = (tempY > (int)tempY) ? tempY + 1 : tempY;
-			mySize = dimX * dimY * filters.size();
-		}
-		else {
-			mySize = imgLen * imgWid * filters.size();
-		}
+		calculateMySize();
 	}
 	/*********************/
 	//Bias
