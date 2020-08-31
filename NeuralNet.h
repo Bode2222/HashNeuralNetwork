@@ -8,7 +8,7 @@
 //v0.1.2: Adam optimizer and trainTillError() function implemented.
 //v0.2: gru layer implemented and tested. Working with sentiment analysis problem.
 //v0.3: Multithread and batchNorm implemented and tested.
-//current version: v0.1.1
+//current version: v0.1.2
 
 //ToDo:
 //Put stops if the net was initialized without any layers, or if i try to backpropagate without feed forwarding first.
@@ -26,6 +26,8 @@ class NeuralNet : public NeuralNetwork
 	int baseT = 50;
 	float lambda = 1.1;
 	float growthRate = 0.1;
+	float adaptiveLearningRateHyperparameter = 0.9;
+	float momentumHyperparameter = 0.9;
 	//number of hash table updates
 	int t = 0;
 	//Number of iterations, used to determine the frequency of hashtable updates

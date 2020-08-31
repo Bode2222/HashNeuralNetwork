@@ -10,6 +10,8 @@ struct Neuron {
 
 	vector<float> weight;
 	vector<float> gradient;
+	vector<float> adaptiveLearningRate;//G(t)
+	vector<float> momentum;//M(t)
 	vector<float> activation;
 	vector<vector<float>> weightGradient;
 
@@ -46,6 +48,8 @@ struct Image {
 	int xDim, yDim;
 	vector<float> val;
 	vector<float> gradients;
+	vector<float> valAdaptiveLearningRate;
+	vector<float> valMomentum;
 };
 
 struct Layer {
@@ -93,6 +97,8 @@ struct Layer {
 	//To store the pre max pooling biases of a convolutional layer. Randomized btw -1 and 1 at the beginning
 	vector<float> convoBias;
 	vector<float> convoBiasGradient;
+	vector<float> convoBiasAdaptiveLearningRate;
+	vector<float> convoBiasMomentum;
 	//To store the indexes of the neurons with the max values for each image during max pooling. Used in backprop
 	vector<vector<vector<int>>> maxNeuronIndex;
 

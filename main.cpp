@@ -5,14 +5,12 @@ using namespace std;
 //Note: 
 //There's no way Im going to remember this so I'll say it here. A pipe is a thread that executes the feedforward and backprop functions during training.
 //There is no bucket limiting during hashing. Its possible all neurons pack into one bucket and reduce performance.
+//I use ADAM optimizer
 
 //TODO: Multithreading
 //Multithread the feed forward and backpropagate functions
 //FFBP will take a vector input, vector output and pipe number, FFBPWOO will take vector input, vector output, pipe number and output value
 //Multithread the outputs of different filters in convolutional layers then add them together
-//Edited dense backprop function to use nextlayerdense and nextlayerconvo functions
-//Switched to minibatch GD(gradient descent) for dense and convolutional layers
-//fix problem caused by non divisible batch sizes
 
 //WHAT DID I DO?! In case the program stops working:->
 //in the feed forward function in NeuralNet.cpp, I am trying to join my threads. if i join them in the same loop that theyre created in, it works fine, if I

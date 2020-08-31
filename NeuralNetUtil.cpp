@@ -4,6 +4,8 @@ Image::Image(int x, int y) {
 	xDim = x; yDim = y;
 	val = vector<float>(x * y);
 	gradients = vector<float>(x * y);
+	valAdaptiveLearningRate = vector<float>(x * y);
+	valMomentum = vector<float>(x * y);
 	for (int i = 0; i < x * y; i++) {
 		val[i] = (rand() % 10000) / 5000.f - 1.f;
 	}
@@ -13,10 +15,14 @@ Image::Image(int x, int y, vector<float>& vals) {
 	xDim = x; yDim = y;
 	val = vals;
 	gradients = vector<float>(val.size());
+	valAdaptiveLearningRate = vector<float>(val.size());
+	valMomentum = vector<float>(val.size());
 }
 
 Neuron::Neuron(vector<float> w) {
 	weight = w;
+	adaptiveLearningRate = vector<float>(w.size());
+	momentum = vector<float>(w.size());
 }
 
 float Neuron::maxW = 8;
@@ -112,6 +118,8 @@ Layer::Layer(LayerType l, int layerSize, ActivationFunction func, int Bits, int 
 void Layer::calculateMySize() {
 	convoBias = vector<float>(imgLen * imgWid * filters.size());
 	convoBiasGradient = vector<float>(convoBias.size());
+	convoBiasAdaptiveLearningRate = vector<float>(convoBias.size());
+	convoBiasMomentum = vector<float>(convoBias.size());
 	if (maxPoolStride != -1) {
 		float tempX = 1.f * imgLen / maxPoolStride;
 		float tempY = 1.f * imgWid / maxPoolStride;

@@ -1011,6 +1011,9 @@ void NeuralNet::clearWeightGradients() {
 void NeuralNet::applyWeightGradients() {
 	float batchsize = net[0].neuron[0].activation.size();
 	float gr = 1.f * growthRate / batchsize;
+	float B = adaptiveLearningRateHyperparameter;
+	float A = momentumHyperparameter;
+	float e = 0.001;//small number added to adaptive learningrate so I wont have any divide by zeros
 	for (int i = 1; i < net.size(); i++) {
 		for (int j = 0; j < net[i].size(); j++) {
 			//If the weights connecting to this neuron is the same number as the number of neurons in the previous layer(ie, not the bias neuron)
@@ -1020,16 +1023,23 @@ void NeuralNet::applyWeightGradients() {
 					for (int l = 0; l < net[i].neuron[j].activation.size(); l++) {
 						totalGradient += net[i].neuron[j].weightGradient[k][l];
 					}
-					net[i].neuron[j].weight[k] -= totalGradient * gr;
+
+					net[i].neuron[j].adaptiveLearningRate[k] = B * net[i].neuron[j].adaptiveLearningRate[k] + (1 - B) * (totalGradient * totalGradient);
+					net[i].neuron[j].momentum[k] = A * net[i].neuron[j].momentum[k] + (1 - A) * totalGradient;
+					net[i].neuron[j].weight[k] -= gr / (sqrt(net[i].neuron[j].adaptiveLearningRate[k]) + e) * net[i].neuron[j].momentum[k];
 				}
 			}
 		}
 		for (int j = 0; j < net[i].convoBiasGradient.size(); j++) {
-			net[i].convoBias[j] -= net[i].convoBiasGradient[j] * gr;
+			net[i].convoBiasAdaptiveLearningRate[j] = B * net[i].convoBiasAdaptiveLearningRate[j] + (1 - B) * (net[i].convoBiasGradient[j] * net[i].convoBiasGradient[j]);
+			net[i].convoBiasMomentum[j] = A * net[i].convoBiasMomentum[j] + (1 - A) * net[i].convoBiasGradient[j];
+			net[i].convoBias[j] -= gr / (sqrt(net[i].convoBiasAdaptiveLearningRate[j]) + e) * net[i].convoBiasMomentum[j];
 		}
 		for (int j = 0; j < net[i].filters.size(); j++) {
 			for (int k = 0; k < net[i].filters[j].gradients.size(); k++) {
-				net[i].filters[j].val[k] -= net[i].filters[j].gradients[k] * gr;
+				net[i].filters[j].valAdaptiveLearningRate[k] = B * net[i].filters[j].valAdaptiveLearningRate[k] + (1 - B) * (net[i].filters[j].gradients[k] * net[i].filters[j].gradients[k]);
+				net[i].filters[j].valMomentum[k] = A * net[i].filters[j].valMomentum[k] + (1 - A) * net[i].filters[j].gradients[k];
+				net[i].filters[j].val[k] -= gr / (sqrt(net[i].filters[j].valAdaptiveLearningRate[k]) + e) * net[i].filters[j].valMomentum[k];
 			}
 		}
 	}
